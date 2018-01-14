@@ -1,33 +1,28 @@
-import http from 'http'
-import socketIO from 'socket.io'
-import {System as SystemConfig} from './config';
+var WebSocketServer = require('websocket').server;
+var http = require('http');
 
-const server = http.createServer();
-
-const io = socketIO(server, {
-  path: '/echo-protocol',
-  serveClient: false,
-  // below are engine.IO options
-  pingInterval: 10000,
-  pingTimeout: 5000,
-  cookie: false,
-  transports: ['websocket','polling']// 'polling',
+var server = http.createServer(function (request, response) {
+  console.log((new Date()) + ' received request for ' + request.url);
+  response.writeHead(404);
+  response.end();
+});
+server.listen(4000, function () {
+  console.log((new Date()) + ' Server is listening on port 4000');
 });
 
-
-io.of('/echo-protocol').on('connection', function (socket) {
-  console.log('connection => ' + socket.id);
-  socket.on('message', function (data) {
-    socket.broadcast.emit('message', data);
-    console.log('message' + data);
-  });
-  socket.on('error', (error) => {
-    console.log(error);
-  });
-  socket.on('disconnect', function (reason) {
-    console.log('disconnect' + reason);
-  });
+var wsServer = new WebSocketServer({
+  httpServer: server,
+  autoAcceptConnections: false
 });
 
-server.listen(SystemConfig.CHAT_server_port);
-console.log('Now start Chat server on port ' + SystemConfig.CHAT_server_port + '...');
+wsServer.on('request', function (request) {
+  // console.log(request);
+  var connection = request.accept('echo-protocol', request.origin);
+  console.log((new Date()) + ' Connection acepted.');
+  connection.on('message', function (message) {
+    console.log(message);
+  });
+  connection.on('close', function (resonCode, description) {
+    console.log((new Date()) + 'Peer' + connection.remoteAddress + ' disconnected');
+  });
+});
